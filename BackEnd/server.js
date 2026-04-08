@@ -39,23 +39,36 @@ const analyticsRoutes = require('./src/routes/analytics.routes');
 const app = express();
 const server = http.createServer(app);
 
+// ── CORS Configuration ───────────────────────────────────────────────
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://green-note-phase1.vercel.app'
+].filter(Boolean); // Remove undefined values
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+};
+
 // ── Socket.IO ─────────────────────────────────────────────────────────
 const io = new Server(server, {
-    cors: {
-        origin: process.env.FRONTEND_URL || '*',
-        methods: ['GET', 'POST'],
-        credentials: true,
-    },
+    cors: corsOptions,
 });
 app.set('io', io); // make io available in controllers via req.app.get('io')
 setupCorridorSocket(io);
 
 // ── Security middleware ───────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',
-    credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
